@@ -14,16 +14,23 @@ export class CatalogsService {
     private productModel: Model<Product>,
   ) {}
 
-  create(createCatalogDto: CreateCatalogDto) {
+  async create(createCatalogDto: CreateCatalogDto) {
     try {
-      const newCatalog = new this.catalogModel(createCatalogDto);
-      newCatalog.save();
-      newCatalog.productList.forEach(async (productId) => {
-        let product = await this.productModel.findById({ _id: productId });
-        product.catalogId = newCatalog._id;
-        await product.save();
+      const catFound = await this.catalogModel.findOne({
+        sellerId: createCatalogDto.sellerId,
       });
-      return newCatalog;
+      if (catFound) {
+        throw new Error('seller has created catalog already');
+      } else {
+        const newCatalog = new this.catalogModel(createCatalogDto);
+        newCatalog.save();
+        newCatalog.productList.forEach(async (productId) => {
+          let product = await this.productModel.findById({ _id: productId });
+          product.catalogId = newCatalog._id;
+          await product.save();
+        });
+        return newCatalog;
+      }
     } catch (err) {
       throw new ForbiddenException({ message: err.message });
     }
